@@ -1,0 +1,5 @@
+@{operate_device}@{device_name}
+@{sys.any}@{operate_device}@{device_name}
+@{device_name}@{operate_device}
+@{sys.any}@{device_name}@{operate_device}
+@{device_name}@{sys.any}@{operate_device}
