@@ -95,6 +95,10 @@ class EntityTriedTree(BaseTriedTree):
         while (tmp_search_word):
             item = tmp_search_word.pop()
             current_word, start_position, end_position, current_type_list = item
+
+            if current_type_list == []:
+                type_list.pop()
+                word_list.pop()
             while current_type_list:
                 type_ = current_type_list.pop(0)
                 if patten_tried_tree.check_pattern_ok(type_list, type_,orgin_string[end_position:]):
@@ -127,6 +131,9 @@ class EntityTriedTree(BaseTriedTree):
             search_one_word_success = False
             for (index, cn_char) in enumerate(cn_chars):
                 current_word  += cn_char
+
+                if index == 0:
+                    tmp_search_word.append((current_word, start_position, start_position  + 1,["sys.any"]))
                 if cn_char not in word_tree:
                     break
                 if 'end' in word_tree[cn_char]:
@@ -135,44 +142,38 @@ class EntityTriedTree(BaseTriedTree):
 
 
 
-            if tmp_search_word:
-                start_position, end_position, search_one_word_success = self.update_status(content,type_list, word_list,
-                                                                                           status_list,
-                                                                                           tmp_search_word,
-                                                                                           patten_tried_tree)
+            start_position, end_position, search_one_word_success = self.update_status(content,type_list, word_list,
+                                                                                       status_list,
+                                                                                       tmp_search_word,
+                                                                                       patten_tried_tree)
 
             # 第一个字退出, 表示没有以第一个字开头的词
             if search_one_word_success == False:
-                if patten_tried_tree.check_pattern_ok(type_list, "sys.any",content[start_position+1:]):
-                    search_one_word_success = True
-                    end_position = start_position+1
-                    current_word = content[start_position:end_position]
-                    self.update_type_list(type_list, "sys.any",word_list,current_word,status_list,[(current_word, start_position, end_position, [])])
-                else:
-                    while status_list:
-                        last_status_item = status_list.pop()
-                        start_position_new, end_position_new, search_one_word_success = self.update_status(content,type_list, word_list,
-                                                                                                   status_list,
-                                                                                                   last_status_item,
-                                                                                                   patten_tried_tree)
+                while status_list:
+                    last_status_item = status_list.pop()
+                    start_position, end_position, search_one_word_success = self.update_status(content,type_list, word_list,
+                                                                                               status_list,
+                                                                                               last_status_item,
+                                                                                               patten_tried_tree)
 
-                        if search_one_word_success == False:
-                            if type_list:
-                                word_list.pop()
-                                type_list.pop()
+                    #if search_one_word_success == False:
+                    #    if type_list:
+                    #        word_list.pop()
+                    #        type_list.pop()
 
-                            if end_position > start_position and patten_tried_tree.check_pattern_ok(type_list, "sys.any",content[start_position+1:]):
-                                search_one_word_success = True
-                                end_position = start_position + 1
-                                current_word = content[start_position:end_position]
-                                self.update_type_list(type_list, "sys.any",word_list,current_word,status_list,[(current_word,start_position,end_position,[])])
-                        else:
-                            start_position,end_position = start_position_new, end_position_new
-                            break
+                        #if end_position > start_position and patten_tried_tree.check_pattern_ok(type_list, "sys.any",content[start_position+1:]):
+                        #    search_one_word_success = True
+                        #    end_position = start_position + 1
+                        #    current_word = content[start_position:end_position]
+                        #    self.update_type_list(type_list, "sys.any",word_list,current_word,status_list,[(current_word,start_position,end_position,[])])
+
+                    if search_one_word_success:
+                        break
+
 
             # 如果不是因为上述原因, 则从下一个字符开始搜索
             if search_one_word_success:
-                if end_position < len( content ):
+                if start_position != end_position  and end_position < len( content ):
                     start_position = end_position
                     cn_chars = content[end_position:]
                     tmp_search_word.clear()
@@ -182,17 +183,28 @@ class EntityTriedTree(BaseTriedTree):
                 break
 
 
+        intention = patten_tried_tree.get_intention(type_list)
+        return self.output_json(intention,status_list,type_list)
 
+    def output_json(self,intention,status_list,type_list):
+        json_string = {
+                            "intent":{},
+                            'entities':[]
+                       }
+        if intention != "":
+            json_string['intent']['name'] = intention[0]
+            json_string['intent']['confidence'] = 1
+            for status_item,type_item in zip(status_list,type_list):
+                if type_item in ['sys.any','modal_words']:
+                    continue
+                entity = {}
+                entity['value'] = status_item[-1][0]
+                entity['start'] = status_item[-1][1]
+                entity['end'] = status_item[-1][2]
+                entity['entity'] = type_item
+                json_string['entities'].append(entity)
 
-        # 输出结果
-        new_word_list = []
-        new_type_list = []
-        for word,type in zip(word_list,type_list):
-            if type != "modal_words":
-                new_word_list.append(word)
-                new_type_list.append(type)
-        return new_word_list,new_type_list
-
+        return json_string
 
 
 

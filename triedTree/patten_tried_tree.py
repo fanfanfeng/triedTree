@@ -40,7 +40,8 @@ class PattenTriedTree(BaseTriedTree):
                 line  = line.strip()
                 if line == "":
                     continue
-                token_list = line.split("@")
+
+                token_list = line.split(",")[0].split("@")
                 sub_pattens = [token.replace("{","").replace("}","") for token in token_list if token != ""]
                 self._insert_word_and_type_to_tree(sub_pattens,intention_name,priority)
 
@@ -52,8 +53,8 @@ class PattenTriedTree(BaseTriedTree):
             current_root = current_root[token]
         current_root['end'] = True
         if 'intention_list' not in current_root:
-            current_root['intention_list'] = {}
-        current_root['intention_list'][intention] = priority
+            current_root['intention_list'] = []
+        current_root['intention_list'].append(intention)
 
 
 
@@ -64,46 +65,47 @@ class PattenTriedTree(BaseTriedTree):
         :return: 
         '''
         root = self.trie_tree
-        if left_words:
-            tmp_type_list = [type for type in type_list if type != 'modal_words']
-            if type_list and type_list[-1]== 'sys.anyNumber' and add_type == "sys.anyNumber":
-                return True
+        tmp_type_list = [type for type in type_list if type != 'modal_words']
 
-            if type_list and type_list[-1]== 'sys.any' and add_type == "sys.any":
-                return True
-
-            if add_type == "modal_words":
-                return True
-
-            for item in tmp_type_list + [add_type]:
-                if item in root:
-                    root = root[item]
-                elif "sys.any" in root:
-                    root = root['sys.any']
-                    if item in root:
-                        root = root[item]
-                    else:
-                        return False
-                else:
-                    return False
-            return True
+        no_change = True
+        if type_list and type_list[-1] == 'sys.anyNumber' and add_type == "sys.anyNumber":
+            pass
+        elif type_list and type_list[-1] == 'sys.any' and add_type == "sys.any":
+            pass
+        elif add_type == "modal_words":
+            pass
         else:
-            tmp_type_list = [type for type in type_list if type!='modal_words']
-            if  type_list and type_list[-1]== 'sys.anyNumber' and add_type == "sys.anyNumber":
-                pass
-            elif  type_list and type_list[-1]== 'sys.any' and add_type == "sys.any":
-                pass
-            elif add_type == "modal_words":
-                pass
-            else:
-                tmp_type_list.append(add_type)
+            tmp_type_list.append(add_type)
+            no_change = False
 
+
+        find_pattent = True
+        if not left_words:
+            no_change = False
+
+        if not no_change:
             for item in tmp_type_list:
                 if item in root:
                     root = root[item]
                 else:
-                    return False
-            if 'end' in root:
-                return True
-            else:
-                return False
+                    find_pattent = False
+            if not left_words:
+                if 'end' in root:
+                    find_pattent = True
+                else:
+                    find_pattent = False
+
+        return find_pattent
+
+
+    def get_intention(self,type_list):
+        root = self.trie_tree
+        itention = ""
+        for item in type_list:
+            if item in root:
+                root = root[item]
+        if 'end' in root:
+            itention = root['intention_list']
+
+        return itention
+
